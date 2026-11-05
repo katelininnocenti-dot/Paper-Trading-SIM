@@ -1,0 +1,40 @@
+# Wakes the free Render web service so scheduled paper-trading jobs can run.
+# GitHub cron is UTC and America/Chicago is UTC-6 (CST) or UTC-5 (CDT).
+# Set the APP_URL repository secret to the service origin (https://….onrender.com)
+# after the first deploy. No trailing path.
+name: Wake paper trader
+
+on:
+  schedule:
+    # Hour before 7:00 AM CT during CDT (UTC-5): 11:00–11:59 UTC.
+    - cron: '*/10 11 * * 1-5'
+    # Hour before 7:00 AM CT during CST (UTC-6), and hour before 8:00 AM CT during CDT.
+    - cron: '*/10 12 * * 1-5'
+    # Hour before 8:00 AM CT during CST. During CDT this is 8:00–8:59 AM, so a late 7:00/8:00 wake still catches up.
+    - cron: '*/10 13 * * 1-5'
+    # Regular session 8:30 AM–3:00 PM CT in both CST and CDT, including 12:00 PM early closes.
+    # A ping every 10 minutes keeps the free service from sleeping through resting orders and the close snapshot.
+    - cron: '*/10 14-20 * * 1-5'
+    # 15:00 CT during CST is 21:00 UTC. 20:50 UTC is 14:50 CST, so these cover a late close.
+    - cron: '5,15 21 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /tick
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "APP_URL secret is not set. Add the Render service origin after deploy."
+            exit 1
+          fi
+          origin="${APP_URL%/}"
+          curl --retry 3 --retry-delay 5 --retry-all-errors --fail-with-body --silent --show-error --max-time 120 "$origin/tick"
+          echo
