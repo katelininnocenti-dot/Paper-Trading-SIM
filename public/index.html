@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Paper Trader">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<title>Paper Trader</title>
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<div id="login" class="login hidden">
+  <div class="logo">Paper Trader</div>
+  <div class="muted">Enter PIN</div>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="8">
+  <button id="pinBtn" class="btn primary">Unlock</button>
+  <div id="pinErr" class="err"></div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="row between">
+      <div class="seg" id="modeSeg"><button data-mode="live" class="on">LIVE</button><button data-mode="sim">2-WEEK SIM</button></div>
+      <div class="pill" id="mkt">…</div>
+    </div>
+    <div class="row between small muted"><span id="clock"></span><span id="feed"></span></div>
+  </header>
+
+  <div id="toastWrap"></div>
+
+  <section id="simBar" class="card hidden">
+    <div class="row between"><b id="simTitle">Two-week simulation</b><span id="simDay" class="muted small"></span></div>
+    <div class="muted small" id="simNote">Ten generated trading days with realistic volatility. Separate $500 account. Alerts fire at simulated 7:00, 8:00 and 3:00 CT.</div>
+    <div class="row wrap gap">
+      <button class="btn" id="simStart">Start new sim</button>
+      <button class="btn" id="simPause">Pause</button>
+      <button class="btn" id="simSkip">Skip to next event</button>
+      <select id="simSpeed"><option value="1">1x (real time)</option><option value="10">10x</option><option value="60" selected>60x (1 sim hr = 1 min)</option><option value="300">300x</option></select>
+    </div>
+  </section>
+
+  <main>
+  <!-- HOME -->
+  <section data-tab="home" class="tab">
+    <div class="card summary">
+      <div class="muted small">Total account value</div>
+      <div class="big" id="total">$—</div>
+      <div class="grid2">
+        <div><div class="muted small">Day P&amp;L</div><div class="mid" id="dayPL">—</div></div>
+        <div><div class="muted small">Total P&amp;L (since $500 start)</div><div class="mid" id="totPL">—</div></div>
+        <div><div class="muted small">Cash</div><div class="mid" id="cash">—</div></div>
+        <div><div class="muted small">Market value</div><div class="mid" id="mv">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="h">Positions</div>
+      <div class="tablewrap"><table class="pos"><thead><tr><th>Symbol</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Mkt value</th><th>Gain $</th><th>Gain %</th></tr></thead><tbody id="posBody"></tbody></table></div>
+      <div id="noPos" class="muted small">No positions. You're 100% cash.</div>
+    </div>
+    <div class="card">
+      <div class="h">Watchlist</div>
+      <div id="watch"></div>
+    </div>
+    <div class="card">
+      <div class="h">Daily P&amp;L (3:00 PM CT close)</div>
+      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Close value</th><th>Day $</th><th>Day %</th><th>Since start</th></tr></thead><tbody id="snapBody"></tbody></table></div>
+      <div id="noSnap" class="muted small">No closes recorded yet. The first snapshot is taken at 3:00 PM CT on the next trading day.</div>
+    </div>
+  </section>
+
+  <!-- TRADE -->
+  <section data-tab="trade" class="tab hidden">
+    <div class="card">
+      <div class="h">Order ticket</div>
+      <div id="closedBanner" class="banner hidden"></div>
+      <label>Symbol</label>
+      <div class="row gap"><input id="tSym" placeholder="e.g. MRK" autocapitalize="characters" autocomplete="off"><button class="btn" id="tQuote">Quote</button></div>
+      <div id="quoteBox" class="quote hidden"></div>
+      <label>Action</label>
+      <div class="seg full" id="tSide"><button data-v="buy">Buy</button><button data-v="sell">Sell</button></div>
+      <label>Order type</label>
+      <select id="tType"><option value="">Select…</option><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop (stop-loss)</option></select>
+      <label>Quantity</label>
+      <div class="seg full" id="tQtyMode"><button data-v="shares" class="on">Shares</button><button data-v="dollars">Dollars</button></div>
+      <input id="tQty" inputmode="decimal" placeholder="Shares">
+      <div id="limitRow" class="hidden"><label>Limit price</label><input id="tLimit" inputmode="decimal" placeholder="$0.00"></div>
+      <div id="stopRow" class="hidden"><label>Stop price</label><input id="tStop" inputmode="decimal" placeholder="$0.00"></div>
+      <div id="tifRow" class="hidden"><label>Timing</label><select id="tTif"><option value="day">Day</option><option value="gtc">Good 'til canceled (GTC)</option></select></div>
+      <button class="btn primary wide" id="tReview">Review order</button>
+      <div id="review" class="review hidden"></div>
+    </div>
+    <div id="liveOrder" class="card hidden"></div>
+  </section>
+
+  <!-- ALERTS -->
+  <section data-tab="alerts" class="tab hidden">
+    <div class="card">
+      <div class="h">Alerts</div>
+      <div class="muted small">Daily check at 7:00 AM CT, game plan at 8:00 AM CT, close summary at 3:00 PM CT on trading days. Simulated practice guidance only, not financial advice.</div>
+      <div id="notifStatus" class="small"></div>
+      <div class="row wrap gap">
+        <button class="btn primary" id="enableNotif">Enable notifications</button>
+        <button class="btn" id="testPush">Send test</button>
+      </div>
+      <div class="row wrap gap">
+        <button class="btn" id="run7">Run 7:00 check now</button>
+        <button class="btn" id="run8">Run 8:00 game plan now</button>
+      </div>
+    </div>
+    <div id="msgs"></div>
+  </section>
+
+  <!-- ORDERS -->
+  <section data-tab="orders" class="tab hidden">
+    <div class="card"><div class="h">Orders</div><div id="orders"></div></div>
+    <div class="card"><div class="h">Trade log</div>
+      <div class="tablewrap tall"><table><thead><tr><th>Time (CT)</th><th>Side</th><th>Sym</th><th>Qty</th><th>Price</th><th>Net</th><th>Cash after</th></tr></thead><tbody id="fillBody"></tbody></table></div>
+      <div id="noFill" class="muted small">No trades yet.</div>
+    </div>
+  </section>
+
+  <!-- INBOX -->
+  <section data-tab="inbox" class="tab hidden">
+    <div class="card"><div class="h">Inbox: trade confirmations</div><div id="inbox"></div></div>
+    <div class="card small muted">Reset account: <input id="resetTxt" placeholder="type RESET" style="width:120px"> <button class="btn" id="resetBtn">Reset this mode to $500</button></div>
+  </section>
+  </main>
+
+  <nav id="nav">
+    <button data-t="home" class="on">Home</button>
+    <button data-t="trade">Trade</button>
+    <button data-t="alerts">Alerts<span class="badge hidden" id="bAlerts"></span></button>
+    <button data-t="orders">Orders</button>
+    <button data-t="inbox">Inbox<span class="badge hidden" id="bInbox"></span></button>
+  </nav>
+</div>
+
+<div id="modal" class="modal hidden"><div class="sheet"><button class="x" id="modalX">✕</button><div id="modalBody"></div></div></div>
+<script src="/app.js"></script>
+</body></html>

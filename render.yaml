@@ -1,0 +1,32 @@
+# Free web service + free Postgres. Apply from the Render Dashboard Blueprint flow.
+# https://dashboard.render.com/blueprint/new?repo=https://github.com/katelininnocenti-dot/Paper-Trading-SIM
+services:
+  - type: web
+    name: paper-trader
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: paper-trader-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: America/Chicago
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: VAPID_SUBJECT
+        value: mailto:paper-trader@example.com
+
+databases:
+  - name: paper-trader-db
+    plan: free
+    region: oregon
+    databaseName: paper_trader
+    # Internal network only. The web service uses the internal connection string.
+    ipAllowList: []
